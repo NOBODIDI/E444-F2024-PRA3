@@ -77,7 +77,11 @@ def test_messages(client):
 
 def test_delete_message(client):
     """Ensure the messages are being deleted"""
-    rv = client.get('/delete/1')
+    rv = client.get("/delete/1")
+    data = json.loads(rv.data)
+    assert data["status"] == 0
+    login(client, app.config["USERNAME"], app.config["PASSWORD"])
+    rv = client.get("/delete/1")
     data = json.loads(rv.data)
     assert data["status"] == 1
 
@@ -85,3 +89,33 @@ def test_delete_message(client):
 def test_search(client):
     response = client.get("/search/", content_type="html/text")
     assert response.status_code == 200
+
+# testing the login_required decorator
+def test_delete_entry_without_login(client):
+    """Test attempting to delete a post without being logged in"""
+
+    # Attempt to delete a post without being logged in
+    rv = client.get("/delete/1")
+    data = json.loads(rv.data)
+
+    # Ensure the status is 401 (Unauthorized) and proper message is returned
+    assert rv.status_code == 401
+    assert data['status'] == 0
+    assert data['message'] == "Please log in."
+
+
+def test_delete_entry_with_login(client):
+    """Test deleting a post when logged in"""
+
+    # Log in the user by setting session['logged_in'] to True
+    with client.session_transaction() as sess:
+        sess['logged_in'] = True
+
+    # Assuming post with id=1 exists, attempt to delete the post
+    rv = client.get("/delete/1")
+    data = json.loads(rv.data)
+
+    # Ensure the status is 200 (OK) and proper message is returned
+    assert rv.status_code == 200
+    assert data['status'] == 1
+    assert data['message'] == "Post Deleted"
